@@ -1,0 +1,163 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+
+-- Create GUI
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "RunInPlaceGUI"
+
+-- Main frame
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 280, 0, 120)
+frame.Position = UDim2.new(0.05, 0, 0.1, 0)
+frame.BackgroundColor3 = Color3.fromRGB(28, 28, 30)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+frame.AnchorPoint = Vector2.new(0, 0)
+
+-- UI Stroke for border
+local stroke = Instance.new("UIStroke", frame)
+stroke.Color = Color3.fromRGB(100, 100, 110)
+stroke.Thickness = 1
+
+-- Header label
+local header = Instance.new("TextLabel", frame)
+header.Size = UDim2.new(1, 0, 0, 30)
+header.BackgroundTransparency = 1
+header.Text = "chatgpt run in place"
+header.TextColor3 = Color3.fromRGB(200, 200, 210)
+header.Font = Enum.Font.GothamBold
+header.TextSize = 20
+header.TextXAlignment = Enum.TextXAlignment.Left
+header.Position = UDim2.new(0, 15, 0, 5)
+
+-- Close button (X)
+local closeButton = Instance.new("TextButton", frame)
+closeButton.Size = UDim2.new(0, 25, 0, 25)
+closeButton.Position = UDim2.new(1, -35, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+closeButton.Text = "X"
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 20
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.AutoButtonColor = false
+closeButton.BorderSizePixel = 0
+closeButton.AnchorPoint = Vector2.new(0, 0)
+
+-- Close button hover effect
+closeButton.MouseEnter:Connect(function()
+	closeButton.BackgroundColor3 = Color3.fromRGB(205, 50, 50)
+end)
+closeButton.MouseLeave:Connect(function()
+	closeButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+end)
+
+-- Toggle label
+local toggleLabel = Instance.new("TextLabel", frame)
+toggleLabel.Size = UDim2.new(0, 140, 0, 40)  -- increased height for two lines
+toggleLabel.Position = UDim2.new(0, 15, 0, 55)
+toggleLabel.BackgroundTransparency = 1
+toggleLabel.Text = "toggle run\nin place"
+toggleLabel.Font = Enum.Font.Gotham
+toggleLabel.TextSize = 18
+toggleLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
+toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+toggleLabel.TextYAlignment = Enum.TextYAlignment.Top
+
+-- Toggle switch frame
+local toggleFrame = Instance.new("Frame", frame)
+toggleFrame.Size = UDim2.new(0, 50, 0, 30)
+toggleFrame.Position = UDim2.new(1, -70, 0, 55)
+toggleFrame.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+toggleFrame.BorderSizePixel = 0
+toggleFrame.ClipsDescendants = true
+toggleFrame.AnchorPoint = Vector2.new(1, 0)
+
+-- Rounded corners for toggle frame
+local toggleRound = Instance.new("UICorner", toggleFrame)
+toggleRound.CornerRadius = UDim.new(1, 0)
+
+-- Toggle circle (knob)
+local toggleCircle = Instance.new("Frame", toggleFrame)
+toggleCircle.Size = UDim2.new(0, 26, 0, 26)
+toggleCircle.Position = UDim2.new(0, 2, 0, 2)
+toggleCircle.BackgroundColor3 = Color3.fromRGB(170, 170, 180)
+toggleCircle.BorderSizePixel = 0
+toggleCircle.AnchorPoint = Vector2.new(0, 0)
+toggleCircle.ClipsDescendants = true
+toggleCircle.ZIndex = 2
+
+local toggleCircleCorner = Instance.new("UICorner", toggleCircle)
+toggleCircleCorner.CornerRadius = UDim.new(1, 0)
+
+-- Rounded corners for main frame
+local mainRound = Instance.new("UICorner", frame)
+mainRound.CornerRadius = UDim.new(0, 8)
+
+-- Rounded corners for close button
+local closeRound = Instance.new("UICorner", closeButton)
+closeRound.CornerRadius = UDim.new(0, 5)
+
+-- State variables
+local isFrozen = false
+local freezePosition = nil
+local freezeConnection = nil
+
+-- Helper function to get HumanoidRootPart
+local function getRootPart()
+	local character = player.Character or player.CharacterAdded:Wait()
+	if not character then return nil end
+	local rootPart = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart")
+	return rootPart
+end
+
+-- Toggle freeze function
+local function toggleFreeze()
+	local rootPart = getRootPart()
+	if not rootPart then
+		warn("HumanoidRootPart not found!")
+		return
+	end
+
+	isFrozen = not isFrozen
+
+	if isFrozen then
+		freezePosition = rootPart.Position
+
+		freezeConnection = RunService.RenderStepped:Connect(function()
+			if rootPart and freezePosition then
+				rootPart.CFrame = CFrame.new(freezePosition, freezePosition + rootPart.CFrame.LookVector)
+			end
+		end)
+
+		-- Animate toggle knob to right
+		toggleCircle:TweenPosition(UDim2.new(0, 22, 0, 2), "Out", "Quad", 0.2, true)
+		toggleCircle.BackgroundColor3 = Color3.fromRGB(80, 200, 100)
+	else
+		if freezeConnection then
+			freezeConnection:Disconnect()
+			freezeConnection = nil
+		end
+
+		-- Animate toggle knob back to left
+		toggleCircle:TweenPosition(UDim2.new(0, 2, 0, 2), "Out", "Quad", 0.2, true)
+		toggleCircle.BackgroundColor3 = Color3.fromRGB(170, 170, 180)
+	end
+end
+
+-- Connect toggle switch click
+toggleFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		toggleFreeze()
+	end
+end)
+
+-- Connect close button
+closeButton.MouseButton1Click:Connect(function()
+	if freezeConnection then
+		freezeConnection:Disconnect()
+		freezeConnection = nil
+	end
+	gui:Destroy()
+end)
